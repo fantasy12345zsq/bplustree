@@ -1,0 +1,1 @@
+/usr/bin/c++   -O2 -g -std="c++11"  -rdynamic CMakeFiles/bplustree_demo.dir/bplustree_demo.cc.o  -o ../bin/bplustree_demo -Wl,-rpath,/home/user/Desktop/bplustree/build/lib ../lib/libbplustree.so.1.0 

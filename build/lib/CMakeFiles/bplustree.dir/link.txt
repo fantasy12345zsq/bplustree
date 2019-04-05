@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -O2 -g -std="c++11"  -shared -Wl,-soname,libbplustree.so.1 -o libbplustree.so.1.0 CMakeFiles/bplustree.dir/bplustree.cc.o 
