@@ -75,23 +75,16 @@ int main(int argc,char ** argv)
     b1.insert(4,4);
     b1.insert(30,30);
     b1.insert(7,7);
-    //printf("\n\n\n\n\n\ninsert 10!\n");
-
     b1.insert(10,10);
-    // printf("\n\n\n\n\n\ninsert 6!\n");
     b1.insert(6,6);
     b1.insert(15,15);
     b1.insert(14,14);
     b1.insert(18,18);
-    //printf("\n\n\n\n\n\ninsert 17!\n");
-
     b1.insert(17,17);
     b1.insert(90,90);
     b1.insert(100,100);
     b1.insert(20,20);
     b1.insert(25,25);
-    //printf("\n\n\n\n\n\ninsert 40!\n");
-
     b1.insert(40,40);
     b1.insert(28,28);
     b1.insert(35,35);
@@ -102,39 +95,40 @@ int main(int argc,char ** argv)
     b1.insert(120,120);
     b1.insert(200,200);
     b1.insert(8,8);
-    //printf("\n\n\n\n\n\ninsert 9!\n");
-
     b1.insert(9,9);
     b1.insert(13,13);
     b1.insert(33,33);
     b1.insert(19,19);
     b1.insert(27,27);
+    b1.insert(26,26);
 
     b1.print();
 
     printf("-------------------remove---------------------\n");
-    b1.remove(23,23);
-    b1.remove(29,29);
-    b1.remove(13,13);
-    b1.remove(15,15);
-    // printf("\n\n\n\n\n\n\n\nremove 7!\n");
-
-    b1.remove(7,7);
-
-    b1.remove(18,18);
-    b1.remove(17,17);
-    b1.remove(6,6);
-    b1.remove(12,12);
-    printf("\n\n\n\n\n\n\n\nremove 10!\n");
     b1.remove(10,10);
-    b1.remove(100,100);
-    b1.remove(90,90);
-    b1.remove(9,9);
-    b1.remove(89,89);
-    b1.remove(14,14);
-    b1.remove(78,78);
+    b1.remove(29,29);
+    b1.remove(33,33);
+    // b1.remove(25,25);
+
+
+
+    // printf("\n\n\n\n\n\n\n\nremove 30!\n");
+    // b1.remove(30,30);
+    // b1.remove(18,18);
+    // b1.remove(17,17);
+    // b1.remove(6,6);
+    // b1.remove(12,12);
+    // printf("\n\n\n\n\n\n\n\nremove 10!\n");
+    // b1.remove(10,10);
+    // b1.remove(100,100);
+    // b1.remove(90,90);
+    // b1.remove(9,9);
+    // b1.remove(89,89);
+    // b1.remove(14,14);
+    // b1.remove(78,78);
     // b1.remove(5,5);
-    // b1.remove(40,40);
+    // printf("\n\n\n\n\n\n\nremove 4!\n");
+    // b1.remove(4,4);
     // b1.remove(32,32);
     // b1.remove(28,28);
     // b1.remove(30,30);

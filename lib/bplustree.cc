@@ -1,8 +1,8 @@
 #include "bplustree.h"
 
 static int _block_size = 128;
-static int _max_entries = 4;
-static int _max_order = 4;
+static int _max_entries = 5;
+static int _max_order = 5;
 
 #define offset_ptr(node) ((char*)(node) + sizeof(*node))
 #define key(node) ((key_t *)offset_ptr(node))
@@ -755,27 +755,27 @@ int bptree::delete_empty_node(struct bplus_node *node,
                               struct bplus_node *l_slib,
                               struct bplus_node *r_slib)
 {
-    printf("delete_empty_node!!\n");
+    //printf("delete_empty_node!!\n");
     //printf("node->self  = %ld,r_slib->self = %ld\n",node->self,r_slib->self);
     if(l_slib != NULL)
     {
-        printf("l_slib->self = %ld\n",l_slib->self);
+        //printf("l_slib->self = %ld\n",l_slib->self);
         if(r_slib != NULL)
         {
-            printf("r_slib->self = %ld\n",r_slib->self);
+            //printf("r_slib->self = %ld\n",r_slib->self);
             r_slib->prev = l_slib->self;
             l_slib->next = r_slib->self;
             node_flush(r_slib);
         }else{
-            printf("r_slib->self == NULL!\n");
+            //printf("r_slib->self == NULL!\n");
             l_slib->next = INVALID_OFFSET;
         }
         node_flush(l_slib);
     }else{
-        printf("l_slib == NULL!\n");
+        //printf("l_slib == NULL!\n");
         if(r_slib != NULL)
         {
-            printf("r_slib->self = %ld\n",r_slib->self);
+            //printf("r_slib->self = %ld\n",r_slib->self);
             r_slib->prev = INVALID_OFFSET;
             node_flush(r_slib);
         }
@@ -784,42 +784,83 @@ int bptree::delete_empty_node(struct bplus_node *node,
     //TODO:
     //把node的空间插入空闲链表
 
-    printf("node->self = %ld\n",node->self);
+    //printf("node->self = %ld\n",node->self);
     free_cache(node);
 }
 int bptree::non_leaf_simple_delete(struct bplus_node *node,int i)
 {
-    printf("non_leaf_simple_delete!\n");
-    printf("node->self = %ld,i = %d\n",node->self,i);
+    // printf("non_leaf_simple_delete!\n");
+    // printf("node->self = %ld,i = %d\n",node->self,i);
 
-    for(int i = 0; i < node->children - 1; i++)
-    {
-        printf("key(node)[%d] = %d\n",i,key(node)[i]);
-    }
-    for(int i = 0; i  < node->children; i++)
-    {
-        printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
-    }
+    // for(int i = 0; i < node->children - 1; i++)
+    // {
+    //     printf("key(node)[%d] = %d\n",i,key(node)[i]);
+    // }
+    // for(int i = 0; i  < node->children; i++)
+    // {
+    //     printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
+    // }
 
     memmove(&key(node)[i],&key(node)[i + 1],(node->children - i - 2) * sizeof(key_t));
     memmove(&sub(node)[i + 1],&sub(node)[i + 2],(node->children - i - 2) * sizeof(off_t));
 
     node->children -- ;
 
-    for(int i = 0; i < node->children - 1; i++)
-    {
-        printf("key(node)[%d] = %d\n",i,key(node)[i]);
-    }
-    for(int i = 0; i < node->children; i++)
-    {
-        printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
-    }
+    // for(int i = 0; i < node->children - 1; i++)
+    // {
+    //     printf("key(node)[%d] = %d\n",i,key(node)[i]);
+    // }
+    // for(int i = 0; i < node->children; i++)
+    // {
+    //     printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
+    // }
 }
 int bptree::non_leaf_borrow_from_left(struct bplus_node *parent,
                                       struct bplus_node *l_slib,
                                       struct bplus_node *node,
                                       int i)
 {
+    //TODO:
+    printf("non_leaf_borrow_from_left!\n");
+    printf("parent->self = %ld,l_slib->self = %ld,node->self = %ld,i = %d\n",
+           parent->self,l_slib->self,node->self,i);
+    for(int i = 0; i < node->children; i++)
+    {
+        printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
+    }
+    for(int i = 0; i < node->children - 1; i++)
+    {
+        printf("key(node)[%d] = %d\n",i,key(node)[i]);
+    }
+
+    for(int i = 0; i < l_slib->children; i++)
+    {
+        printf("sub(l_slib)[%d] = %ld\n",i,sub(l_slib)[i]);
+    }
+    for(int i = 0; i < l_slib->children - 1; i++)
+    {
+        printf("key(l_slib)[%d] = %d\n",i,key(l_slib)[i]);
+    }
+
+    memmove(&key(node)[1],&key(node)[0],(node->children - 1) * sizeof(key_t));
+    memmove(&sub(node)[1],&sub(node)[0],(node->children) * sizeof(off_t));
+
+    key(node)[0] = key(l_slib)[l_slib->children - 2];
+    sub(node)[0] = sub(l_slib)[l_slib->children - 1];
+    node->children ++;
+    l_slib->children --;
+    struct bplus_node *temp = node_fetch(sub(node)[0]);
+    temp->parent = node->self;
+    node_flush(temp);
+
+    for(int i = 0; i < node->children; i++)
+    {
+        printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
+    }
+    for(int i = 0; i < node->children - 1; i++)
+    {
+        printf("key(node)[%d] = %d\n",i,key(node)[i]);
+    }
 
 }
 int bptree::non_leaf_borrow_from_right(struct bplus_node *parent,
@@ -827,37 +868,37 @@ int bptree::non_leaf_borrow_from_right(struct bplus_node *parent,
                                        struct bplus_node *node,
                                        int i)
 {
-
+    //TODO:
 }
 int bptree::non_leaf_merge_with_left(struct bplus_node *parent,
                                      struct bplus_node *node,
                                      struct bplus_node *l_slib,
                                      int i)
 {
-    printf("non_leaf_merge_with_left!\n");
-    printf("parent->self = %ld,node->self = %ld,l_slib->self = %ld,i = %d\n",
-            parent->self,node->self,l_slib->self,i);
-    printf("l_slib->children = %d\n",l_slib->children);
-    printf("node->children = %d\n",node->children);
+    // printf("non_leaf_merge_with_left!\n");
+    // printf("parent->self = %ld,node->self = %ld,l_slib->self = %ld,i = %d\n",
+    //         parent->self,node->self,l_slib->self,i);
+    // printf("l_slib->children = %d\n",l_slib->children);
+    // printf("node->children = %d\n",node->children);
 
-    for(int i = 0; i < node->children - 1; i++)
-    {
-        printf("key(node)[%d] = %d\n",i,key(node)[i]);
-    }
+    // for(int i = 0; i < node->children - 1; i++)
+    // {
+    //     printf("key(node)[%d] = %d\n",i,key(node)[i]);
+    // }
 
-    for(int i = 0; i < node->children; i++)
-    {
-        printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
-    }
+    // for(int i = 0; i < node->children; i++)
+    // {
+    //     printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
+    // }
 
-    for(int i = 0; i < l_slib->children - 1; i++)
-    {
-        printf("key(l_slib)[%d] = %d\n",i,key(l_slib)[i]);
-    }
-    for(int i = 0; i < l_slib->children; i++)
-    {
-        printf("sub(l_slib)[%d] = %ld\n",i,sub(l_slib)[i]);
-    }
+    // for(int i = 0; i < l_slib->children - 1; i++)
+    // {
+    //     printf("key(l_slib)[%d] = %d\n",i,key(l_slib)[i]);
+    // }
+    // for(int i = 0; i < l_slib->children; i++)
+    // {
+    //     printf("sub(l_slib)[%d] = %ld\n",i,sub(l_slib)[i]);
+    // }
     memmove(&key(node)[node->children + 1],&key(l_slib)[0],(l_slib->children - 1)* sizeof(key_t));
     key(node)[node->children - 1] = key(parent)[i];
 
@@ -869,29 +910,29 @@ int bptree::non_leaf_merge_with_left(struct bplus_node *parent,
     for(int i = 0; i < l_slib->children; i++)
     {
         struct bplus_node *temp = node_fetch(sub(l_slib)[i]);
-        printf("temp->self = %ld,temp->parent = %ld\n",temp->self,temp->parent);
+        //printf("temp->self = %ld,temp->parent = %ld\n",temp->self,temp->parent);
         temp->parent = node->self;
         node_flush(temp);
     }
 
-    for(int i = 0; i < node->children; i++)
-    {
-        printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
-    }
-    for(int i = 0; i < node->children -1 ; i++)
-    {
-        printf("key(node)[%d] = %d\n",i,key(node)[i]);
-    }
+    // for(int i = 0; i < node->children; i++)
+    // {
+    //     printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
+    // }
+    // for(int i = 0; i < node->children -1 ; i++)
+    // {
+    //     printf("key(node)[%d] = %d\n",i,key(node)[i]);
+    // }
 }
 int bptree::non_leaf_merge_with_right(struct bplus_node *parent,
                                       struct bplus_node *node,
                                       struct bplus_node *r_slib,
                                       int i)
 {
-    printf("non_leaf_merge_with_right!\n");
-    printf("parent->self = %ld,node->self = %ld,r_slib->self = %ld,i = %d\n",
-            parent->self,node->self,r_slib->self,i);
-    printf("r_slib->children = %d\n",r_slib->children);
+    // printf("non_leaf_merge_with_right!\n");
+    // printf("parent->self = %ld,node->self = %ld,r_slib->self = %ld,i = %d\n",
+    //         parent->self,node->self,r_slib->self,i);
+    // printf("r_slib->children = %d\n",r_slib->children);
 
     key(node)[node->children - 1] = key(parent)[i];
     node->children ++;
@@ -911,14 +952,14 @@ int bptree::non_leaf_merge_with_right(struct bplus_node *parent,
     }
 
 
-    for(int i = 0; i < node->children - 1; i++)
-    {
-        printf("key(node)[%d] = %d\n",i,key(node)[i]);
-    }
-    for(int i = 0; i < node->children; i++)
-    {
-        printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
-    }
+    // for(int i = 0; i < node->children - 1; i++)
+    // {
+    //     printf("key(node)[%d] = %d\n",i,key(node)[i]);
+    // }
+    // for(int i = 0; i < node->children; i++)
+    // {
+    //     printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
+    // }
 
 }
 int bptree::non_leaf_delete(struct bplus_node *node,int index)
@@ -937,11 +978,11 @@ int bptree::non_leaf_delete(struct bplus_node *node,int index)
 
     if(node->parent == INVALID_OFFSET)
     {
-        printf("node->parent == INVALID_OFFSET!\n");
+        //printf("node->parent == INVALID_OFFSET!\n");
         if(node->children == 2)
         {
             struct bplus_node *root = node_fetch(sub(node)[index]);
-            printf("root->self = %ld\n",root->self);
+            //printf("root->self = %ld\n",root->self);
             tree->root = root->self;
             tree->level--;
             root->parent = INVALID_OFFSET;
@@ -954,7 +995,7 @@ int bptree::non_leaf_delete(struct bplus_node *node,int index)
 
     }else if(node->children <= (_max_entries + 1) / 2){
 
-        printf("node -> children <= (_max_entries + 1) / 2");
+        //printf("node -> children <= (_max_entries + 1) / 2");
 
         struct bplus_node *parent = node_fetch(node->parent);
         struct bplus_node *l_slib = node_fetch(node->prev);
@@ -962,13 +1003,13 @@ int bptree::non_leaf_delete(struct bplus_node *node,int index)
 
         // printf("parent->self = %ld,l_slib->self = %ld,r_slib->self = %ld\n",
         //        parent->self,l_slib->self,r_slib->self);
-        printf("parent->self = %ld,key(node)[0] = %d\n",parent->self,key(node)[0]);
+        //printf("parent->self = %ld,key(node)[0] = %d\n",parent->self,key(node)[0]);
         int i = index_in_parent(parent,key(node)[0]);
-        printf("i = %d\n",i);
+        //printf("i = %d\n",i);
 
         if(select_slib(parent,l_slib,r_slib,i) == LEFT_SLIBING)
         {
-            printf("select LEFT_SLIBING!\n");
+            //printf("select LEFT_SLIBING!\n");
             non_leaf_simple_delete(node,index);
             if(l_slib->children <= (_max_entries + 1) / 2)
             {
@@ -988,7 +1029,7 @@ int bptree::non_leaf_delete(struct bplus_node *node,int index)
                 node_flush(l_slib);
             }
         }else{
-            printf("select RIGTH_SLIBING!\n");
+            //printf("select RIGTH_SLIBING!\n");
             non_leaf_simple_delete(node,index);
 
             if(r_slib->children <= (_max_entries + 1) / 2)
@@ -998,8 +1039,8 @@ int bptree::non_leaf_delete(struct bplus_node *node,int index)
 
 
                 struct bplus_node *rr_slib = node_fetch(r_slib->next);
-                printf("r_slib->self = %ld,node->self = %ld\n",
-                       r_slib->self,node->self);
+                // printf("r_slib->self = %ld,node->self = %ld\n",
+                //        r_slib->self,node->self);
                 delete_empty_node(r_slib,node,rr_slib);
                 node_flush(l_slib);
 
@@ -1022,10 +1063,10 @@ int bptree::borrow_from_right_node(struct bplus_node *parent,
                                    struct bplus_node *node,
                                    int index)
 {
-    printf("borrow_from_right_node!\n");
-    printf("parent->self = %ld,r_slib->self = %ld,node->self = %ld,index = %d\n",
-           parent->self,r_slib->self,node->self,index);
-    printf("parent->children = %d\n",parent->children);
+    // printf("borrow_from_right_node!\n");
+    // printf("parent->self = %ld,r_slib->self = %ld,node->self = %ld,index = %d\n",
+    //        parent->self,r_slib->self,node->self,index);
+    // printf("parent->children = %d\n",parent->children);
 
     key_t key = key(r_slib)[0];
     long data = data(r_slib)[0];
@@ -1040,28 +1081,28 @@ int bptree::borrow_from_right_node(struct bplus_node *parent,
 
     key(parent)[index] = key(r_slib)[0];
 
-    printf("parent->children = %d\n",parent->children);
-    for(int i = 0; i < parent->children - 1; i++)
-    {
-        printf("key(parent)[%d] = %d\n",i,key(parent)[i]);
-    }
-    for(int i = 0; i < node->children; i++)
-    {
-        printf("key(node)[%d] = %d\n",i,key(node)[i]);
-    }
-    for(int i = 0; i < r_slib->children; i++)
-    {
-        printf("key(r_slib)[%d] = %d\n",i,key(r_slib)[i]);
-    }
+    //printf("parent->children = %d\n",parent->children);
+    // for(int i = 0; i < parent->children - 1; i++)
+    // {
+    //     printf("key(parent)[%d] = %d\n",i,key(parent)[i]);
+    // }
+    // for(int i = 0; i < node->children; i++)
+    // {
+    //     printf("key(node)[%d] = %d\n",i,key(node)[i]);
+    // }
+    // for(int i = 0; i < r_slib->children; i++)
+    // {
+    //     printf("key(r_slib)[%d] = %d\n",i,key(r_slib)[i]);
+    // }
 }
 int bptree::borrow_from_left_node(struct bplus_node *parent,
                                   struct bplus_node *l_slib,
                                   struct bplus_node *node,
                                   int index)
 {
-    printf("borrow_from_left_node!\n");
-    printf("l_slib ->self = %ld,node->self = %ld\n",l_slib->self,node->self);
-    printf("parent->self = %ld,index = %d\n",parent->self,index);
+    // printf("borrow_from_left_node!\n");
+    // printf("l_slib ->self = %ld,node->self = %ld\n",l_slib->self,node->self);
+    // printf("parent->self = %ld,index = %d\n",parent->self,index);
 
     key_t key = key(l_slib)[l_slib->children - 1];
     long data = data(l_slib)[l_slib->children - 1];
@@ -1076,19 +1117,19 @@ int bptree::borrow_from_left_node(struct bplus_node *parent,
     l_slib->children -- ;
     node->children ++;
 
-    for(int i = 0; i < parent->children - 1; i++)
-    {
-        printf("key(parent)[%d] = %d\n",i,key(parent)[i]);
-    }
+    // for(int i = 0; i < parent->children - 1; i++)
+    // {
+    //     printf("key(parent)[%d] = %d\n",i,key(parent)[i]);
+    // }
 
-    for(int i = 0; i < node->children; i++)
-    {
-        printf("key(node)[%d] = %d\n",i,key(node)[i]);
-    }
-    for(int i = 0; i < l_slib->children; i++)
-    {
-        printf("key(l_slib)[%d] = %d\n",i,key(l_slib)[i]);
-    }
+    // for(int i = 0; i < node->children; i++)
+    // {
+    //     printf("key(node)[%d] = %d\n",i,key(node)[i]);
+    // }
+    // for(int i = 0; i < l_slib->children; i++)
+    // {
+    //     printf("key(l_slib)[%d] = %d\n",i,key(l_slib)[i]);
+    // }
 }
 int bptree::leaf_delete(struct bplus_node *node,key_t key,long data)
 {
@@ -1097,8 +1138,8 @@ int bptree::leaf_delete(struct bplus_node *node,key_t key,long data)
     printf("node->children = %d\n",node->children);
 
     int index = key_insert_location(node,key);
-    printf("index = %d\n",index);
-    printf("key = %d\n",key);
+    // printf("index = %d\n",index);
+    // printf("key = %d\n",key);
     if(index < 0)
     {
         //not exit!
@@ -1113,18 +1154,18 @@ int bptree::leaf_delete(struct bplus_node *node,key_t key,long data)
         if(node->children == 0)
         {
             delete_empty_node(node,NULL,NULL);
-            for(int i = 0; i < MIN_CACHE_NUM; i++)
-            {
-                printf("%5d",tree->used[i]);
-            }
+            // for(int i = 0; i < MIN_CACHE_NUM; i++)
+            // {
+            //     printf("%5d",tree->used[i]);
+            // }
             tree->root = INVALID_OFFSET;
         }
         node_flush(node);
     }else if(node->children <= (_max_entries + 1) / 2)
     {
-        printf("node->children <= (_max_entries + 1)\n");
-        printf("node->self = %ld,node->prev = %ld,node->next = %ld,node->parent = %ld\n",
-                node->self,node->prev,node->next,node->parent);
+        // printf("node->children <= (_max_entries + 1)\n");
+        // printf("node->self = %ld,node->prev = %ld,node->next = %ld,node->parent = %ld\n",
+        //         node->self,node->prev,node->next,node->parent);
 
         // for(int i = 0; i < MIN_CACHE_NUM; i++)
         // {
@@ -1138,13 +1179,13 @@ int bptree::leaf_delete(struct bplus_node *node,key_t key,long data)
         //     printf("tree->used[%d] = %d\n",i,tree->used[i]);
         // }
         int i = index_in_parent(parent,key(node)[0]);
-        // printf("parent->self = %ld,r_slib->self = %ld,l_slib->self = %ld\n",
-        //         parent->self,r_slib->self,l_slib->self);
+        printf("parent->self = %ld,r_slib->self = %ld,l_slib->self = %ld\n",
+                parent->self,r_slib->self,l_slib->self);
         printf("key(node)[0] = %d,i = %d\n",key(node)[0],i);
 
         if(select_slib(parent,l_slib,r_slib,i) == LEFT_SLIBING)
         {
-            printf("chose LEFT_SLIBING!\n");
+            //printf("chose LEFT_SLIBING!\n");
             //先删除节点
             leaf_simple_delete(node,key,data,index);
             if(l_slib->children > (_max_entries + 1) / 2)
@@ -1155,7 +1196,7 @@ int bptree::leaf_delete(struct bplus_node *node,key_t key,long data)
                 node_flush(l_slib);
                 node_flush(parent);
             }else{
-                printf("l_slib->children < (_max_entries + 1) / 2!\n");
+                //printf("l_slib->children < (_max_entries + 1) / 2!\n");
                 merge_with_left_node(parent,l_slib,node,index);
 
                 //printf("r_slib->self = %ld\n",r_slib->self);
@@ -1301,7 +1342,7 @@ int bptree::remove(key_t key,long data)
         return -1;
     }
 
-    printf("root ->self = %ld\n",node->self);
+    //printf("root ->self = %ld\n",node->self);
     while(node != NULL)
     {
         if(is_leaf(node))
@@ -1314,9 +1355,9 @@ int bptree::remove(key_t key,long data)
             {
                 node  = node_seek(sub(node)[i + 1]);
             }else{
-                printf("i = %d\n",i);
+                //printf("i = %d\n",i);
                 i = -i - 1;
-                printf("sub(node)[i] = %ld\n",sub(node)[i]);
+                //printf("sub(node)[i] = %ld\n",sub(node)[i]);
                 node = node_seek(sub(node)[i]);
             }
 
@@ -1366,7 +1407,7 @@ void bptree::print()
                 printf("%5d",key(node)[j]);
             }
             printf("        ");
-            printf("\n node->self = %ld node->parent = %ld\n",node->self,node->parent);
+             printf("\n node->self = %ld node->parent = %ld\n",node->self,node->parent);
             node = node_seek(node->next);
         }
         printf("\n");
