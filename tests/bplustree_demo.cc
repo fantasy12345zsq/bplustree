@@ -45,7 +45,7 @@ int main(int argc,char ** argv)
     b1.insert(270,270);
     b1.insert(260,260);
     b1.insert(265,265);
-    
+
 
     b1.print();
     return 0;
@@ -101,14 +101,22 @@ int main(int argc,char ** argv)
     b1.insert(19,19);
     b1.insert(27,27);
     b1.insert(26,26);
+    b1.insert(115,115);
+    b1.insert(47,47);
+    b1.insert(46,46);
 
     b1.print();
 
     printf("-------------------remove---------------------\n");
+    b1.remove(14,14);
+    b1.remove(15,15);
     b1.remove(10,10);
-    b1.remove(29,29);
+    b1.remove(8,8);
+    b1.remove(9,9);
+    b1.remove(4,4);
     b1.remove(33,33);
-    // b1.remove(25,25);
+    printf("\n\n\n\n\n\n\n\nremove 32!\n");
+    b1.remove(32,32);
 
 
 
@@ -153,4 +161,4 @@ int main(int argc,char ** argv)
     b1.print();
     return 0;
 }
-#endif 
+#endif
