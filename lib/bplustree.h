@@ -8,11 +8,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
+#include <ctype.h>
+#include <list>
 
 
 #define  MIN_CACHE_NUM 5
+#define ADDR_STR_WIDTH 16
 
-typedef int key_t;
+typedef int key_t; 
+typedef long data_t;
+
 enum{
     INVALID_OFFSET = 0xdeadbeef,
 };
@@ -25,34 +30,65 @@ enum{
     LEFT_SLIBING,
     RIGHT_SLIBING = 1,
 };
+static int _max_entries;   //通过_block_size计算叶子节点的最大存放节点数
+static int _max_order;
+
+//对于叶子节点来说，存放key和data
+//对于非叶子节点来说，存放key和sub，sub代表孩子节点的偏移
+#define offset_ptr(node) ((char*)(node) + sizeof(*node))
+#define key(node) ((key_t *)offset_ptr(node))
+#define data(node) ((data_t *)(offset_ptr(node) + _max_entries * sizeof(key_t)))
+#define sub(node) ((off_t *)(offset_ptr(node) + (_max_order - 1) * sizeof(key_t)))
+
+
+//block定义
 typedef struct bplus_node{
-    off_t self;
-    off_t parent;
-    off_t prev;
-    off_t next;
-    int type;
-    int children;
-}bplus_node;
+    off_t self;        //自身偏移
+    off_t parent;      //父节点偏移
+    off_t prev;        //前驱节点偏移
+    off_t next;        //后继节点偏移
+    int type;          //节点类型（叶子 or 非叶子）
+    int children;      //节点孩子个数
+}block;
 
 struct bplus_tree{
-    char* caches;
-    int used[MIN_CACHE_NUM];
-    int level;
-    off_t root;
-    off_t file_size;
+    char* caches;               //从磁盘读出节点的缓存
+    int used[MIN_CACHE_NUM];    //标记缓存的使用情况
+    int level;                  //层数
+    off_t root;                 //根节点偏移
+    off_t file_size;            //文件大小
 };
 
-class bptree{
+class bptree : public block
+{
+    private:
+      struct bplus_tree *tree;
+      int fd;
+      char filename[1024];        
+      int checksum;              //校验和
+      int _block_size;          //块大小
+      std::list<off_t> free_block;
+    
     public:
-      bptree(const char *filename,int blocksize);
+      //bptree(const char *filename,int blocksize);
+      bptree();
       ~bptree();
-      int init();
-      int bpopen();
+      bool init(const char *filename,int blocksize);
+      int bpopen(const char *filename);
       void bpclose();
+      //插入
       int insert(key_t key,long data);
+      //删除
       int remove(key_t key,long data);
+      //打印
       void print();
       int get_level();
+    public:
+      void handle_command();
+      void help();
+      void deinit();
+      void handle_insert();
+      void handle_remove();
     private:
       void free_cache(struct bplus_node *node);
       void node_flush(struct bplus_node *node);
@@ -130,9 +166,5 @@ class bptree{
                                    int i);
       int non_leaf_simple_delete(struct bplus_node *node,int index);
 
-    private:
-       struct bplus_tree *tree;
-       int fd;
-       char filename[1024];
 };
 #endif /* _BPLUS_TREE_H  */

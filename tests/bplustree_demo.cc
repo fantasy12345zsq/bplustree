@@ -58,65 +58,72 @@ int main(int argc,char ** argv)
 {
     const char* filename = "/tmp/data_test.index";
     int blocksize = 128;
-    bptree b1(filename,blocksize);
-    b1.init();
+    bptree b1;
+    bool again = false;
+    while(!again)
+    {
+        again = b1.init(filename,blocksize);
+    }
 
-    b1.insert(12,12);
-    b1.insert(23,23);
-    b1.insert(45,45);
-    b1.insert(56,56);
-    b1.insert(78,78);
-    b1.insert(89,89);
-    b1.insert(36,36);
-    b1.insert(58,58);
-    b1.insert(49,49);
-    b1.insert(5,5);
-    b1.insert(1,1);
-    b1.insert(4,4);
-    b1.insert(30,30);
-    b1.insert(7,7);
-    b1.insert(10,10);
-    b1.insert(6,6);
-    b1.insert(15,15);
-    b1.insert(14,14);
-    b1.insert(18,18);
-    b1.insert(17,17);
-    b1.insert(90,90);
-    b1.insert(100,100);
-    b1.insert(20,20);
-    b1.insert(25,25);
-    b1.insert(40,40);
-    b1.insert(28,28);
-    b1.insert(35,35);
-    b1.insert(31,31);
-    b1.insert(32,32);
-    b1.insert(29,29);
-    b1.insert(11,11);
-    b1.insert(120,120);
-    b1.insert(200,200);
-    b1.insert(8,8);
-    b1.insert(9,9);
-    b1.insert(13,13);
-    b1.insert(33,33);
-    b1.insert(19,19);
-    b1.insert(27,27);
-    b1.insert(26,26);
-    b1.insert(115,115);
-    b1.insert(47,47);
-    b1.insert(46,46);
+    b1.handle_command();
 
-    b1.print();
+    // b1.insert(12,12);
+    // b1.insert(23,23);
+    // b1.insert(45,45);
+    // b1.insert(56,56);
+    // b1.insert(78,78);
+    // b1.insert(89,89);
+    // b1.insert(36,36);
+    // b1.insert(58,58);
+    // b1.insert(49,49);
+    // b1.insert(5,5);
+    // b1.insert(1,1);
+    // b1.insert(4,4);
+    // b1.insert(30,30);
+    // b1.insert(7,7);
+    // b1.insert(10,10);
+    // b1.insert(6,6);
+    // b1.insert(15,15);
+    // b1.insert(14,14);
+    // b1.insert(18,18);
+    // b1.insert(17,17);
+    // b1.insert(90,90);
+    // b1.insert(100,100);
+    // b1.insert(20,20);
+    // b1.insert(25,25);
+    // b1.insert(40,40);
+    // b1.insert(28,28);
+    // b1.insert(35,35);
+    // b1.insert(31,31);
+    // b1.insert(32,32);
+    // b1.insert(29,29);
+    // b1.insert(11,11);
+    // b1.insert(120,120);
+    // b1.insert(200,200);
+    // b1.insert(8,8);
+    // b1.insert(9,9);
+    // b1.insert(13,13);
+    // b1.insert(33,33);
+    // b1.insert(19,19);
+    // b1.insert(27,27);
+    // b1.insert(26,26);
+    // b1.insert(115,115);
+    // b1.insert(47,47);
+    // b1.insert(46,46);
 
-    printf("-------------------remove---------------------\n");
-    b1.remove(14,14);
-    b1.remove(15,15);
-    b1.remove(10,10);
-    b1.remove(8,8);
-    b1.remove(9,9);
-    b1.remove(4,4);
-    b1.remove(33,33);
-    printf("\n\n\n\n\n\n\n\nremove 32!\n");
-    b1.remove(32,32);
+    //b1.print();
+    b1.deinit();
+
+    // printf("-------------------remove---------------------\n");
+    // b1.remove(14,14);
+    // b1.remove(15,15);
+    // b1.remove(10,10);
+    // b1.remove(8,8);
+    // b1.remove(9,9);
+    // b1.remove(4,4);
+    // b1.remove(33,33);
+    // printf("\n\n\n\n\n\n\n\nremove 32!\n");
+    // b1.remove(32,32);
 
 
 
@@ -158,7 +165,7 @@ int main(int argc,char ** argv)
     // b1.remove(49,49);
     // b1.remove(4,4);
 
-    b1.print();
+    //b1.print();
     return 0;
 }
 #endif

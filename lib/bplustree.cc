@@ -1,14 +1,43 @@
 #include "bplustree.h"
 
-static int _block_size = 128;
-static int _max_entries = 5;
-static int _max_order = 5;
-
-#define offset_ptr(node) ((char*)(node) + sizeof(*node))
-#define key(node) ((key_t *)offset_ptr(node))
-#define data(node) ((long *)(offset_ptr(node) + _max_entries * sizeof(key_t)))
-#define sub(node) ((off_t *)(offset_ptr(node) + (_max_entries - 1) * sizeof(key_t)))
-
+static  void hex_to_str(off_t offset, char *buf, int len)
+{
+        const static char *hex = "0123456789ABCDEF";
+        while (len-- > 0) {
+                buf[len] = hex[offset & 0xf];
+                offset >>= 4;
+        }
+}
+static off_t str_to_hex(char *c,int len)
+{
+    off_t offset = 0;
+    while (len-- > 0) {
+        if (isdigit(*c)) {
+            offset = offset * 16 + *c - '0';
+        } else if (isxdigit(*c)) {
+            if (islower(*c)) {
+                offset = offset * 16 + *c - 'a' + 10;
+            } else {
+                offset = offset * 16 + *c - 'A' + 10;
+            }
+        }
+        c++;
+    }
+    //printf("offset = %ld\n",offset);
+    return offset;
+}
+static off_t offset_load(int fd)
+{
+    char buf[ADDR_STR_WIDTH];
+    ssize_t len = read(fd,buf,sizeof(buf));
+    return len > 0 ? str_to_hex(buf,sizeof(buf)) : INVALID_OFFSET;
+}
+static ssize_t offset_store(int fd,off_t offset)
+{
+    char buf[ADDR_STR_WIDTH];
+    hex_to_str(offset,buf,sizeof(buf));
+    return write(fd,buf,sizeof(buf));
+}
 static bool is_leaf(struct bplus_node * node)
 {
     if(node->type == BPLUS_TREE_LEAF)
@@ -58,7 +87,7 @@ static int index_in_parent(struct bplus_node *node,key_t key)
     //printf("index = %d\n",index);
     return index >=  0 ? index : -index - 2;
 }
-static void leaf_simple_insert(struct bplus_node * node,key_t key,long data,int insert)
+static void leaf_simple_insert(struct bplus_node * node,key_t key,data_t data,int insert)
 {
     // printf("leaf_simple_insert!\n");
     // printf("node->self = %ld\n",node->self);
@@ -75,7 +104,7 @@ static void leaf_simple_insert(struct bplus_node * node,key_t key,long data,int 
     //     printf("key(node)[%d] = %d\n",i,key(node)[i]);
     // }
 }
-static void leaf_simple_delete(struct bplus_node *node,key_t key,long data,int index)
+static void leaf_simple_delete(struct bplus_node *node,key_t key,data_t data,int index)
 {
     // printf("leaf_simple_delete!\n");
     // printf("index = %d\n",index);
@@ -335,19 +364,25 @@ key_t bptree::non_leaf_split_right2(struct bplus_node *node,
 
     return split_key;
 }
-
-bptree::bptree(const char *file_name,int blocksize)
-    : tree(NULL)
+bptree::bptree()
+    :tree(NULL)
 {
+    fd = -1;
     bzero(filename,sizeof(filename));
-    strcpy(filename,file_name);
-    _block_size = blocksize;
+    _block_size = 0;
 }
+// bptree::bptree(const char *file_name,int blocksize)
+//     : tree(NULL)
+// {
+//     bzero(filename,sizeof(filename));
+//     strcpy(filename,file_name);
+//     _block_size = blocksize;
+// }
 bptree::~bptree()
 {
 
 }
-int bptree::bpopen()
+int bptree::bpopen(const char *filename)
 {
     return ::open(filename ,O_CREAT | O_RDWR,0644);
 }
@@ -355,30 +390,88 @@ void bptree::bpclose()
 {
     ::close(fd);
 }
-int bptree::init()
+bool bptree::init(const char *filename,int block_size)
 {
+    struct bplus_node node;
+    off_t i;
+    if(strlen(filename) >= 1024)
+    {
+        fprintf(stderr,"filename too long!\n");
+        return false;
+    }
+
+    if((block_size & (block_size - 1)) != 0)
+    {
+        fprintf(stderr,"block size must be pow of 2!\n");
+        return false;
+    }
+
+    if(block_size < (int) sizeof(node))
+    {
+        fprintf(stderr,"block size is too small for one node!\n");
+        return false;
+    }
+
+    _block_size = block_size;
+    _max_order = (block_size - sizeof(node)) / (sizeof(key_t) + sizeof(off_t));
+    _max_entries = (block_size - sizeof(node)) / (sizeof(key_t) + sizeof(data_t));
+    if(_max_order <= 2)
+    {
+        fprintf(stderr, "block size is too small for one node!\n");
+        return false;
+    }
     tree = (struct bplus_tree *)malloc(1 * sizeof(*tree));
     if(tree == NULL)
     {
         printf("malloc fail!\n");
-        return -1;
+        return false;
     }
+    printf("_block_size = %d, _max_entries = %d,_max_order = %d\n",
+           _block_size,_max_entries,_max_order);
+
     tree->caches = (char *)malloc(_block_size * MIN_CACHE_NUM);
     if(tree->caches == NULL)
     {
         printf("malloc fail!\n");
-        return -1;
+        return false;
     }
-    tree->used[MIN_CACHE_NUM] = {0};
-    tree->root = INVALID_OFFSET;
-    tree->file_size = 0;
-    fd = bpopen();
-    if(fd < 0)
+    strcpy(this->filename,filename);
+
+    //index file
+    int fd = open(strcat(this->filename,".boot"),O_RDWR,0644);
+    if(fd >= 0)
+    {
+        printf("fd >= 0!\n");
+        tree->root = offset_load(fd);
+        _block_size = offset_load(fd);
+        tree->file_size = offset_load(fd);
+        tree->level = offset_load(fd);
+        printf("tree->root = %ld,tree->file_size = %ld,_block_size = %d,level = %d\n",
+               tree->root,tree->file_size,_block_size,tree->level);
+        //加载空闲块
+        while((i = offset_load(fd)) != INVALID_OFFSET)
+        {
+            free_block.push_back(i);
+        }
+        close(fd);
+
+    }else{
+        printf("fd < 0!\n");
+        tree->root = INVALID_OFFSET;
+        _block_size = block_size;
+        tree->file_size = 0;
+    }
+    
+    //data file
+    this->fd = bpopen(filename);
+    printf("filename = %s\n",filename);
+    printf("this->filename = %s\n",this->filename);
+    if(this->fd < 0)
     {
         printf("open file fail!\n");
-        return -1;
+        return false;
     }
-    return 0;
+    return true;
 }
 void bptree::free_cache(struct bplus_node * node)
 {
@@ -393,6 +486,7 @@ void bptree::node_flush(struct bplus_node * node)
     if(node != NULL)
     {
         int len = pwrite(fd,node,_block_size,node->self);
+        printf("block_size = %d,node->self = %ld\n",_block_size,node->self);
         assert(len == _block_size);
         free_cache(node);
     }
@@ -469,10 +563,18 @@ struct bplus_node *bptree::leaf_new()
 }
 off_t bptree::new_node_add(struct bplus_node *node)
 {
-    node->self = tree->file_size;
-    tree->file_size += _block_size;
-
-
+    if(free_block.empty())
+    {
+        printf("free_block is empty!\n");
+        node->self = tree->file_size;
+        tree->file_size += _block_size;
+        printf("node->self = %ld,tree->file_size = %ld\n",node->self,tree->file_size);
+    }else{
+        printf("free_block is not empty!\n");
+        off_t offset = free_block.front();
+        free_block.pop_front();
+        node->self = offset;
+    }
     return node->self;
 }
 
@@ -518,7 +620,7 @@ void bptree::add_right_node(struct bplus_node *node,struct bplus_node *right)
     right->prev = node->self;
 }
 key_t bptree::leaf_split_left(struct bplus_node *node,struct bplus_node *left,
-                             key_t key,long data,int insert)
+                             key_t key,data_t data,int insert)
 {
     //printf("leaf_split_left!\n");
     int split = (node->children + 1) / 2;
@@ -781,10 +883,10 @@ int bptree::delete_empty_node(struct bplus_node *node,
         }
     }
 
-    //TODO:
     //把node的空间插入空闲链表
 
     //printf("node->self = %ld\n",node->self);
+    free_block.push_front(node->self);
     free_cache(node);
 }
 int bptree::non_leaf_simple_delete(struct bplus_node *node,int i)
@@ -1174,7 +1276,7 @@ int bptree::borrow_from_left_node(struct bplus_node *parent,
     //     printf("key(l_slib)[%d] = %d\n",i,key(l_slib)[i]);
     // }
 }
-int bptree::leaf_delete(struct bplus_node *node,key_t key,long data)
+int bptree::leaf_delete(struct bplus_node *node,key_t key,data_t data)
 {
     // printf("leaf_delete!\n");
     // printf("node->self = %ld\n",node->self);
@@ -1274,7 +1376,7 @@ int bptree::leaf_delete(struct bplus_node *node,key_t key,long data)
     }
     return 0;
 }
-int bptree::leaf_insert(struct bplus_node *node,key_t key,long data)
+int bptree::leaf_insert(struct bplus_node *node,key_t key,data_t data)
 {
     // printf("leaf_insert!\n");
     // printf("node->self = %ld,node->children = %d\n",node->self,node->children);
@@ -1337,7 +1439,7 @@ int bptree::leaf_insert(struct bplus_node *node,key_t key,long data)
     }
 }
 //插入操作
-int bptree::insert(key_t key,long data)
+int bptree::insert(key_t key,data_t data)
 {
     //把根从文件读到caches中
     struct bplus_node *node = node_seek(tree->root);
@@ -1375,7 +1477,7 @@ int bptree::insert(key_t key,long data)
 }
 
 //删除操作
-int bptree::remove(key_t key,long data)
+int bptree::remove(key_t key,data_t data)
 {
     //把根文件读到cache中
     struct bplus_node *node = node_seek(tree->root);
@@ -1427,22 +1529,37 @@ void bptree::print()
 
 
      //test
-     struct bplus_node *temp1 = node_seek(tree->root);
-     if(temp1 != NULL && !is_leaf(temp1))
-     {
-         for(int i = 0; i < temp1->children; i++)
-         {
-             printf("sub(temp1)[%d] = %ld\n", i,sub(temp1)[i]);
-         }
-     }
+    //  struct bplus_node *temp1 = node_seek(tree->root);
+    //  if(temp1 != NULL && !is_leaf(temp1))
+    //  {
+    //      for(int i = 0; i < temp1->children; i++)
+    //      {
+    //          printf("sub(temp1)[%d] = %ld\n", i,sub(temp1)[i]);
+    //      }
+    //  }
 
+    printf("k = %d\n",k);
+    if(k == 0)
+    {
+        while(node != NULL)
+        {
+            for(int j = 0; j < node->children; j++)
+            {
+                printf("%5d",key(node)[j]);
+            }
+            printf("        ");
+            printf("\n node->self = %ld node->parent = %ld node->next = %ld\n",
+                  node->self,node->parent,node->next);
+            node = node_seek(node->next);
+        }
+        printf("node == NULL!\n");
+        return ;
+    }
 
-
-    //TODO: 只有一层时，段错误，有bug(k值的原因)
     for(int i = 1; i <= k; i++)
     {
         node = p;
-        //printf("\n-------%d level-------\n",i);
+        printf("\n-------%d level-------\n",i);
         while(node != NULL)
         {
             for(int j = 0; j < node->children - 1; j++)
@@ -1486,4 +1603,171 @@ void bptree::print()
         printf("%5d",tree->used[i]);
     }
     printf("\n");
+}
+
+void bptree::handle_command()
+{
+    int c;
+    key_t key;
+    data_t data;
+    printf("please input command('h' for help):");
+    for(;;)
+    {
+        switch(c = getchar())
+        {
+            case EOF:
+                printf("\n");
+            case 'q':
+                return ;
+            case 'p':
+                print();
+                break;
+            case 'h':
+                help();
+                break;
+            case 'r':
+                handle_remove();
+                printf("\n");
+            case 'i':
+                handle_insert();
+                printf("\n");
+            case '\n':
+                printf("please input command('h' for help):");
+            default:
+                break;
+                
+        }
+    }
+}
+
+void bptree::help()
+{
+    printf("i: insert.\n");
+    printf("r: remove. \n");
+    printf("p: print.  print bplustree\n");
+    printf("q: quit\n");
+}
+void bptree::handle_insert()
+{
+    char buf[1024];
+    char *p;
+    key_t key = 0;
+    data_t data = 0;
+    int i = 0;
+    p = fgets(buf,1024,stdin);
+    //printf("buf = %s\n",buf);
+    while(1)
+    {
+        if(buf[i] >= '0' && buf[i] <= '9')
+        {
+            //printf(">=0 <= 9\n");
+            key = key * 10 + buf[i] - '0';
+            //printf("key = %d\n",key);
+            
+        }else if(buf[i] == '-' || buf[i] == '\0'){
+            //printf("- 0!\n");
+            i++;
+            break;
+        }else{
+            //printf("else!\n");
+            
+        }
+        i++;
+    }
+
+    //printf("key = %d\n",key);
+    //printf("i = %d\n",i);
+    while(1)
+    {
+        if(buf[i] >= '0' && buf[i] <= '9')
+        {
+            //printf(">=0 <= 9\n");
+            data = data * 10 + buf[i] - '0';
+            //printf("data = %ld\n",data);
+            
+        }else if(buf[i] == '-' || buf[i] == '\0'){
+            //printf("- 0!\n");
+            //i++;
+            break;
+        }else{
+            //printf("else!\n");
+            
+        }
+        i++;
+    }
+    //printf("key = %d, data = %ld\n",key,data);
+    insert(key,data);
+}
+void bptree::handle_remove()
+{
+    char buf[1024];
+    char *p;
+    key_t key = 0;
+    data_t data = 0;
+    int i = 0;
+    p = fgets(buf,1024,stdin);
+    printf("buf = %s\n",buf);
+    while(1)
+    {
+        if(buf[i] >= '0' && buf[i] <= '9')
+        {
+            //printf(">=0 <= 9\n");
+            key = key * 10 + buf[i] - '0';
+            //printf("key = %d\n",key);
+            
+        }else if(buf[i] == '-' || buf[i] == '\0'){
+            //printf("- 0!\n");
+            i++;
+            break;
+        }else{
+            //printf("else!\n");
+            
+        }
+        i++;
+    }
+
+    printf("key = %d\n",key);
+    //printf("i = %d\n",i);
+    while(1)
+    {
+        if(buf[i] >= '0' && buf[i] <= '9')
+        {
+            //printf(">=0 <= 9\n");
+            data = data * 10 + buf[i] - '0';
+            //printf("data = %ld\n",data);
+            
+        }else if(buf[i] == '-' || buf[i] == '\0'){
+            //printf("- 0!\n");
+            //i++;
+            break;
+        }else{
+            //printf("else!\n");
+            
+        }
+        i++;
+    }
+    printf("data = %ld\n",data);
+    remove(key,data);
+}
+void bptree::deinit()
+{
+    printf("deinit!\n");
+    printf("this->filename = %s\n",this->filename);
+    int fd = open(this->filename,O_CREAT | O_RDWR,0644);
+    assert(fd >= 0);
+    assert(offset_store(fd,tree->root) == ADDR_STR_WIDTH);
+    assert(offset_store(fd,_block_size) == ADDR_STR_WIDTH);
+    assert(offset_store(fd,tree->file_size) == ADDR_STR_WIDTH);
+    assert(offset_store(fd,tree->level) == ADDR_STR_WIDTH);
+
+    while(!free_block.empty())
+    {
+        off_t offset = free_block.front();
+        assert(offset_store(fd,offset) == ADDR_STR_WIDTH);
+        free_block.pop_front();
+    }
+
+    bpclose();
+    free(tree->caches);
+    free(tree);
 }
