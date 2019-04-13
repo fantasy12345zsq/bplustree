@@ -87,6 +87,7 @@ class bptree : public block
       void handle_command();
       void help();
       void deinit();
+      void handle(char c);
       void handle_insert();
       void handle_remove();
     private:
