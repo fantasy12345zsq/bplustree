@@ -24,6 +24,8 @@ int main(int argc,char ** argv)
     
     b1.deinit();
 
+
+    //test
     // b1.insert(12,12);
     // b1.insert(23,23);
     // b1.insert(34,34);
@@ -37,25 +39,26 @@ int main(int argc,char ** argv)
     // b1.insert(43,43);
     // b1.insert(54,54);
     // b1.insert(65,65);
-    // b1.insert(76,76);
     // b1.insert(87,87);
     // b1.insert(98,98);
-    // b1.insert(13,13);
+    // b1.insert(100,100);
     // b1.insert(24,24);
     // b1.insert(35,35);
-    // b1.insert(2,2);
-
-
-    // b1.print();
-
-    // printf("\n------------remove-----------\n");
-    // b1.remove(76,76);
-    // b1.insert(100,100);
+    // b1.insert(36,36);
+    // b1.insert(40,40);
+    // b1.insert(150,150);
     // b1.insert(90,90);
-    // b1.insert(95,95);
+    // b1.insert(200,200);
+    // b1.insert(160,160);
+    // b1.insert(50,50);
+    // b1.insert(110,110);
+    // b1.insert(120,120);
+    // b1.insert(130,130);
+    // b1.insert(140,140);
+    // b1.insert(91,91);
     // b1.insert(92,92);
-    // b1.remove(23,23);
-    // b1.remove(34,34);
+    // b1.insert(93,93);
+    // b1.insert(88,88);
 
     // b1.print();
  

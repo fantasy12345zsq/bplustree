@@ -134,8 +134,11 @@ key_t bptree::non_leaf_split_right1(struct bplus_node *node,
                                     key_t key,
                                     int insert)
 {
-    add_right_node(node,right);
+    //printf("non_leaf_split_right1!\n");
 
+    add_right_node(node,right);
+    // printf("node->self = %ld,right->self = %ld,l_ch->self = %ld,r_ch->self = %ld,key = %d\n",
+    //         node->self,right->self,l_ch->self,r_ch->self,key);
     //调整分裂后两个节点的sub
     int split = (_max_entries + 1) / 2;
     key_t split_key = key;
@@ -148,9 +151,16 @@ key_t bptree::non_leaf_split_right1(struct bplus_node *node,
 
     sub(right)[0] = r_ch->self;
     r_ch->parent = right->self;
+    sub(node)[node->children - 1] = l_ch->self;
+    l_ch->parent = node->self;
     memmove(&sub(right)[1],&sub(node)[split + 1],
             (_max_entries - split) * sizeof(off_t));
 
+    
+    // for(int i = 0; i < node->children; i++)
+    // {
+    //     printf("sub(node)[%d] = %ld\n",i,sub(node)[i]);
+    // }
     node_flush(l_ch);
     node_flush(r_ch);
 
@@ -161,6 +171,10 @@ key_t bptree::non_leaf_split_right1(struct bplus_node *node,
         node_flush(temp);
     }
 
+    // for(int i = 0; i < right->children; i++)
+    // {
+    //     printf("sub(right)[%d] = %ld\n",i,sub(right)[i]);
+    // }
     return split_key;
 }
 key_t bptree::non_leaf_split_right(struct bplus_node *node,
@@ -510,8 +524,8 @@ key_t bptree::leaf_split_left(struct bplus_node *node,struct bplus_node *left,
     //printf("leaf_split_left!\n");
     int split = (node->children + 1) / 2;
     add_left_node(node,left);
-    // printf("node->self = %ld,left->self = %ld\n",node->self,left->self);
-    // printf("left->next = %ld\n",left->next);
+    //printf("node->self = %ld,left->self = %ld\n",node->self,left->self);
+    //printf("left->next = %ld\n",left->next);
 
     int privot = insert;
     left->children = split;
