@@ -1,3 +1,11 @@
+////
+// @file bplustree.h
+// @brief
+// 实现B+树头文件
+//
+// @author zhangsiqi
+// @email 1575033031@qq.com
+//
 #ifndef _BPLUS_TREE_H
 #define _BPLUS_TREE_H
 
@@ -44,7 +52,7 @@ static int _max_order;
 //block定义
 typedef struct bplus_node{
     off_t self;        //自身偏移
-    off_t parent;      //父节点偏移
+    off_t parent;      //父节点偏移 TODO: 建议不要parent
     off_t prev;        //前驱节点偏移
     off_t next;        //后继节点偏移
     int type;          //节点类型（叶子 or 非叶子）
@@ -65,9 +73,9 @@ class bptree : public block
       struct bplus_tree *tree;
       int fd;
       char filename[1024];        
-      int checksum;              //校验和
-      int _block_size;          //块大小
-      std::list<off_t> free_block;
+      int checksum;                //校验和
+      int _block_size;             //块大小
+      std::list<off_t> free_block; //空闲块链表
     
     public:
       //bptree(const char *filename,int blocksize);
